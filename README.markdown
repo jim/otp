@@ -29,4 +29,4 @@ This hodgepodge of scripts will append a phone icon to the end of your Slack las
     USER_ID=ABCD1234
     ```
 
-6. Then run `./otp_start.sh` to start the script. You can use `DEBUG=1 ./otp_start.sh` if things aren't working and you want some debug output.
+6. Then run `bundle exec ruby otp.rb` to start the script. You can use `DEBUG=1 bundle exec ruby otp.rb` if things aren't working and you want some debug output.
