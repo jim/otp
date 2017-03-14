@@ -12,7 +12,7 @@ This hodgepodge of scripts will append a phone icon to the end of your Slack las
 
 2. Go to System Preferences > Security & Privacy > Accessibility > Privacy and add Terminal.app to the list of apps allowed to control your computer.
 
-3. Go to [this page]() and request a Slack testing token. The admin of your
+3. Go to [this page](https://api.slack.com/docs/oauth-test-tokens) and request a Slack testing token. The admin of your
     slack account will need to approve this request.
 
 4. Add the token from #1 to a `.env` file like this:
