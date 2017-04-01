@@ -3,19 +3,17 @@
 
 require "http"
 require "json"
-require "dotenv"
-require "pp"
-
-Dotenv.load
-
-TOKEN = ENV["TOKEN"]
-USER_ID = ENV["USER_ID"]
 
 class SlackRequester
   class RequestFailure < StandardError; end
 
+  def initialize(token, user_id)
+    @user_id = user_id
+    @token = token
+  end
+
   def call(method, params = {})
-    request_params = {token: TOKEN, user: USER_ID}.merge(params)
+    request_params = {token: @token, user: @user_id}.merge(params)
     data = make_request(method, request_params)
     if data["ok"]
       #pp data if ENV["DEBUG"]
@@ -28,7 +26,7 @@ class SlackRequester
   def make_request(method, params)
     response = HTTP.get("https://slack.com/api/#{method}", params: params)
     JSON.parse(response.body)
-  rescue HTTP::ConnectionError => e
+  rescue HTTP::ConnectionError, JSON::ParserError => e
     raise RequestFailure, e.message
   end
 end

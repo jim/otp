@@ -15,6 +15,7 @@ GEM
       domain_name (~> 0.5)
     http-form_data (1.0.1)
     http_parser.rb (0.6.0)
+    minitest (5.10.1)
     public_suffix (2.0.5)
     unf (0.1.4)
       unf_ext
@@ -26,6 +27,7 @@ PLATFORMS
 DEPENDENCIES
   dotenv
   http
+  minitest
 
 BUNDLED WITH
-   1.13.7
+   1.14.6
