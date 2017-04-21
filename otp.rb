@@ -2,28 +2,42 @@
 # to indicate that the user is On The Phone and may be less responsive
 # as a result.
 
-require_relative "./slack_requester"
+require "dotenv"
 
-PHONE_EMOJI = " 📞".freeze
+Dotenv.load
+
+require_relative "./slack_account"
+require_relative "./slack_credentials"
+require_relative "./slack_requester"
+require_relative "./logging"
+
+require "byebug"
+
 DELAY = 60
 
 class OTP
+  include Logging
+
   def initialize
-    @slack_requester = SlackRequester.new
+    creds = SlackCredentials.new
+
+    @leader_account = SlackAccount.new(SlackRequester.new(*creds.leader))
+    @follower_accounts = creds.followers.map do |token, user_id|
+      SlackAccount.new(SlackRequester.new(token, user_id))
+    end
   end
 
-  def set_last_name(last_name)
-    puts "Setting last name to #{last_name}" if ENV["DEBUG"]
-    @slack_requester.call("users.profile.set", profile: { last_name: last_name }.to_json)
+  def all_accounts
+    [@leader_account].concat(@follower_accounts)
   end
 
   def run_js(name)
     output = `osascript -l JavaScript js/#{name}.js 1>&2`
     status = $?.exitstatus
-    if ENV["DEBUG"]
-      puts "running js #{name}: #{status}"
-      puts output unless output.empty?
-    end
+
+    log "running js #{name}: #{status}"
+    log(output) unless output.empty?
+
     case status
     when 0
       false  # not active
@@ -35,40 +49,30 @@ class OTP
   end
 
   def update_status
-    data = @slack_requester.call("users.getPresence")
-    unless data["presence"] == "active"
-      puts "You are not active, aborting."
+    present = @leader_account.present
+    @follower_accounts.each { |f| f.update_presence(present) }
+
+    unless present
+      log("You are not active; not checking for OTP status.")
+      @follower_accounts.each { |f| f.update_otp_status(false) }
       return
     end
 
     otp = run_js("zoom_status")
-    puts "You are on a Zoom call" if otp
+    log("You are on a Zoom call") if otp
 
     unless otp
       otp = run_js("chrome_status")
-      puts "You are on an appear.in call" if otp
+      log("You are on an appear.in call") if otp
     end
 
     unless otp
       otp = run_js("skype_status")
-      puts "You are on a Skype call" if otp
+      log("You are on a Skype call") if otp
     end
 
-    data = @slack_requester.call("users.profile.get")
-    last_name = data["profile"]["last_name"]
-
-    otp_set = last_name.include?(PHONE_EMOJI)
-
-    if otp_set
-      puts "You are currently set to otp"
-    else
-      puts "You are not currently set to otp"
-    end
-
-    if otp && !otp_set
-      set_last_name("#{last_name} #{PHONE_EMOJI}")
-    elsif !otp && otp_set
-      set_last_name(last_name.sub(PHONE_EMOJI, ""))
+    all_accounts.each do |account|
+      account.update_otp_status(otp)
     end
   end
 end
@@ -83,10 +87,10 @@ loop do
   rescue SlackRequester::RequestFailure => e
     failed_requests += 1
     delay = 2**failed_requests
-    if ENV["DEBUG"]
-      puts e.message
-      puts "retrying in #{delay} seconds..."
-    end
+
+    puts e.message
+    puts "retrying in #{delay} seconds..."
+
     sleep delay
   end
 end

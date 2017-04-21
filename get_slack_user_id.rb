@@ -14,5 +14,5 @@ creds.each do |token, user_id|
   data = slack_requester.call("auth.test")
   id = data["user_id"]
 
-  puts "The Slack user id for token '#{token[0..8]}...' is #{id}."
+  puts "The Slack user id for token '#{token[0..12]}...' is #{id}."
 end

@@ -5,4 +5,5 @@ gem "dotenv"
 
 group :development do
   gem "minitest"
+  gem "byebug"
 end
