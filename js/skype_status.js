@@ -5,7 +5,13 @@ ObjC.import('stdlib')
 var skype = Application("Skype");
 
 function sendCommand(command) {
-  return skype.send({command: command, scriptName: "otp"});
+  var result;
+  try {
+    result = skype.send({command: command, scriptName: "otp"});
+  } catch(e) {
+    console.log(e.message);
+    $.exit(0);
+  }
 }
 
 if (!skype.running()) {

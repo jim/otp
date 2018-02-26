@@ -3,17 +3,28 @@ require_relative "./logging"
 class SlackAccount
   include Logging
 
-  PHONE_EMOJI = " 📞".freeze
+  OTP_STATUS_HASH = { "status_text" => "On the phone",
+                      "status_emoji" => ":telephone_receiver:" }
+  EMPTY_STATUS_HASH = { "status_text" => "",
+                        "status_emoji" => "" }
 
   def initialize(requester)
     @requester = requester
-    update_names
+    load_names
+  end
+
+  def full_name
+    "#{@first_name} #{@last_name}"
+  end
+
+  def load_names
+    data = @requester.call("users.profile.get")
+    @first_name = data["profile"]["first_name"]
+    @last_name = data["profile"]["last_name"]
   end
 
   def update_otp_status(is_otp)
-    update_names
-
-    otp_set = @last_name.include?(PHONE_EMOJI)
+    otp_set = current_status == OTP_STATUS_HASH
 
     if otp_set
       log "#{full_name} is currently set to otp"
@@ -22,11 +33,11 @@ class SlackAccount
     end
 
     if is_otp && !otp_set
-      set_last_name("#{@last_name} #{PHONE_EMOJI}")
+      set_otp
       log  "Setting #{full_name} to OTP."
     elsif !is_otp && otp_set
+      restore_prior_status
       log  "Setting #{full_name} to not OTP."
-      set_last_name(@last_name.sub(PHONE_EMOJI, ""))
     end
   end
 
@@ -43,17 +54,23 @@ class SlackAccount
 
   private
 
-  def update_names
+  def current_status
     data = @requester.call("users.profile.get")
-    @first_name = data["profile"]["first_name"]
-    @last_name = data["profile"]["last_name"]
+    { "status_emoji" => data["profile"]["status_emoji"],
+      "status_text" => data["profile"]["status_text"] }
   end
 
-  def full_name
-    "#{@first_name} #{@last_name}"
+  def update_prior_status_hash
+    @prior_status_hash = current_status
   end
 
-  def set_last_name(last_name)
-    @requester.call("users.profile.set", profile: { last_name: last_name }.to_json)
+  def set_otp
+    update_prior_status_hash
+    @requester.call("users.profile.set", profile: OTP_STATUS_HASH.to_json)
+  end
+
+  def restore_prior_status
+    profile = @prior_status_hash || EMPTY_STATUS_HASH
+    @requester.call("users.profile.set", profile: profile.to_json)
   end
 end
